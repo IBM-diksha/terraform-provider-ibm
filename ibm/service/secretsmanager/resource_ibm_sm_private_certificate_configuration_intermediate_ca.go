@@ -16,7 +16,7 @@ import (
 	"github.com/IBM-Cloud/terraform-provider-ibm/ibm/conns"
 	"github.com/IBM-Cloud/terraform-provider-ibm/ibm/flex"
 	"github.com/IBM/go-sdk-core/v5/core"
-	"github.com/IBM/secrets-manager-go-sdk/secretsmanagerv2"
+	"github.com/IBM/secrets-manager-go-sdk/v2/secretsmanagerv2"
 )
 
 func ResourceIbmSmPrivateCertificateConfigurationIntermediateCA() *schema.Resource {
@@ -518,7 +518,7 @@ func resourceIbmSmPrivateCertificateConfigurationIntermediateCARead(context cont
 	if err = d.Set("status", configuration.Status); err != nil {
 		return diag.FromErr(fmt.Errorf("Error setting status: %s", err))
 	}
-	if err = d.Set("expiration_date", flex.DateTimeToString(configuration.ExpirationDate)); err != nil {
+	if err = d.Set("expiration_date", DateTimeToRFC3339(configuration.ExpirationDate)); err != nil {
 		return diag.FromErr(fmt.Errorf("Error setting expiration_date: %s", err))
 	}
 	if configuration.Data != nil {
