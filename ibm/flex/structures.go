@@ -930,6 +930,188 @@ func ReplicationRuleGet(in *s3.ReplicationConfiguration) []map[string]interface{
 	return rules
 }
 
+func flattenLifecycleExpiration(expiration *s3.LifecycleExpiration) []interface{} {
+	if expiration == nil {
+		return []interface{}{}
+	}
+	m := make(map[string]interface{})
+	if expiration.Date != nil {
+		m["date"] = expiration.Date.Format(time.RFC3339)
+	}
+	if expiration.Days != nil {
+		m["days"] = int(aws.Int64Value(expiration.Days))
+	}
+	if expiration.ExpiredObjectDeleteMarker != nil {
+		m["expired_object_delete_marker"] = aws.Bool(*expiration.ExpiredObjectDeleteMarker)
+	}
+	return []interface{}{m}
+}
+
+func flattenNoncurrentVersionExpiration(expiration *s3.NoncurrentVersionExpiration) []interface{} {
+	if expiration == nil {
+		return []interface{}{}
+	}
+	m := make(map[string]interface{})
+	if expiration.NoncurrentDays != nil {
+		m["noncurrent_days"] = int(aws.Int64Value(expiration.NoncurrentDays))
+	}
+	return []interface{}{m}
+}
+func flattenTransitions(transitions []*s3.Transition) []interface{} {
+	if len(transitions) == 0 {
+		return []interface{}{}
+	}
+	var results []interface{}
+	for _, transition := range transitions {
+		m := make(map[string]interface{})
+		if transition.StorageClass != nil {
+			m["storage_class"] = transition.StorageClass
+		}
+		if transition.Date != nil {
+			m["date"] = transition.Date.Format(time.RFC3339)
+		}
+		if transition.Days != nil {
+			m["days"] = int(aws.Int64Value(transition.Days))
+		}
+		results = append(results, m)
+	}
+	return results
+}
+
+func flattenLifecycleRuleFilter(filter *s3.LifecycleRuleFilter) []interface{} {
+	if filter == nil {
+		return []interface{}{}
+	}
+	m := make(map[string]interface{})
+	if filter.And != nil {
+		m["and"] = flattenLifecycleRuleFilterMemberAnd(filter.And)
+
+	}
+	if filter.ObjectSizeGreaterThan != nil && int(aws.Int64Value(filter.ObjectSizeGreaterThan)) > 0 {
+
+		m["object_size_greater_than"] = int(aws.Int64Value(filter.ObjectSizeGreaterThan))
+
+	}
+	if filter.ObjectSizeLessThan != nil && int(aws.Int64Value(filter.ObjectSizeLessThan)) > 0 {
+
+		m["object_size_less_than"] = int(aws.Int64Value(filter.ObjectSizeLessThan))
+
+	}
+	if filter.Tag != nil {
+		m["tag"] = flattenLifecycleRuleFilterMemberTag(filter.Tag)
+
+	}
+	if filter.Prefix != nil {
+		m["prefix"] = aws.String(*filter.Prefix)
+	}
+	return []interface{}{m}
+}
+func flattenLifecycleRuleFilterMemberAnd(andOp *s3.LifecycleRuleAndOperator) []interface{} {
+	if andOp == nil {
+		return []interface{}{}
+	}
+	m := map[string]interface{}{
+		"object_size_greater_than": andOp.ObjectSizeGreaterThan,
+		"object_size_less_than":    andOp.ObjectSizeLessThan,
+	}
+
+	if v := andOp.Prefix; v != nil {
+		m["prefix"] = aws.StringValue(v)
+	}
+
+	if v := andOp.Tags; v != nil {
+		m["tags"] = flattenMultipleTags(v)
+	}
+
+	return []interface{}{m}
+}
+
+func flattenMultipleTags(in []*s3.Tag) []map[string]interface{} {
+	println("Inside lifecycle rule get")
+	tagSet := make([]map[string]interface{}, 0, len(in))
+	if in != nil {
+		for _, tagSetValue := range in {
+			tag := make(map[string]interface{})
+			if tagSetValue.Key != nil {
+				tag["key"] = *tagSetValue.Key
+			}
+			if tagSetValue.Value != nil {
+				tag["value"] = *tagSetValue.Value
+			}
+
+			tagSet = append(tagSet, tag)
+
+		}
+
+	}
+
+	return tagSet
+}
+
+func flattenLifecycleRuleFilterMemberTag(op *s3.Tag) []interface{} {
+	if op == nil {
+		return nil
+	}
+
+	m := make(map[string]interface{})
+
+	if v := op.Key; v != nil {
+		m["key"] = aws.StringValue(v)
+	}
+
+	if v := op.Value; v != nil {
+		m["value"] = aws.StringValue(v)
+	}
+
+	return []interface{}{m}
+}
+
+func flattenAbortIncompleteMultipartUpload(u *s3.AbortIncompleteMultipartUpload) []interface{} {
+	if u == nil {
+		return []interface{}{}
+	}
+
+	m := make(map[string]interface{})
+
+	if u.DaysAfterInitiation != nil {
+		m["days_after_initiation"] = int(aws.Int64Value(u.DaysAfterInitiation))
+	}
+
+	return []interface{}{m}
+}
+
+func LifecylceRuleGet(in []*s3.LifecycleRule) []map[string]interface{} {
+	println("Inside lifecycle rule get")
+	rules := make([]map[string]interface{}, 0, len(in))
+	if in != nil {
+		for _, lifecyclerule := range in {
+			lifecycleRuleConfig := make(map[string]interface{})
+			if lifecyclerule.Status != nil {
+				lifecycleRuleConfig["status"] = *lifecyclerule.Status
+			}
+			if lifecyclerule.ID != nil {
+				lifecycleRuleConfig["rule_id"] = *lifecyclerule.ID
+			}
+			if lifecyclerule.Expiration != nil {
+				lifecycleRuleConfig["expiration"] = flattenLifecycleExpiration(lifecyclerule.Expiration)
+			}
+			if lifecyclerule.Transitions != nil {
+				lifecycleRuleConfig["transition"] = flattenTransitions(lifecyclerule.Transitions)
+			}
+			if lifecyclerule.AbortIncompleteMultipartUpload != nil {
+				lifecycleRuleConfig["abort_incomplete_multipart_upload"] = flattenAbortIncompleteMultipartUpload(lifecyclerule.AbortIncompleteMultipartUpload)
+			}
+			if lifecyclerule.NoncurrentVersionExpiration != nil {
+				lifecycleRuleConfig["noncurrent_version_expiration"] = flattenNoncurrentVersionExpiration(lifecyclerule.NoncurrentVersionExpiration)
+			}
+			if lifecyclerule.Filter != nil {
+				lifecycleRuleConfig["filter"] = flattenLifecycleRuleFilter(lifecyclerule.Filter)
+			}
+			rules = append(rules, lifecycleRuleConfig)
+		}
+	}
+	return rules
+}
 func ObjectLockConfigurationGet(in *s3.ObjectLockConfiguration) []map[string]interface{} {
 	configuration := make([]map[string]interface{}, 0, 1)
 	if in != nil {
